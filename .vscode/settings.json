@@ -5,5 +5,7 @@
     "cortex-debug.gdbPath": "/opt/toolchains/zephyr-sdk-0.17.2/arm-zephyr-eabi/bin/arm-zephyr-eabi-gdb",
     "editor.formatOnSave": true,
     "files.associations": {},
-    "cortex-debug.variableUseNaturalFormat": true
+    "cortex-debug.variableUseNaturalFormat": true,
+    "dev.containers.dockerPath": "podman",
+    "dev.containers.dockerHost": "unix:///run/user/1000/podman/podman.sock"
 }
