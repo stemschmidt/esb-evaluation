@@ -1,0 +1,9 @@
+{
+    "cortex-debug.armToolchainPrefix": "arm-zephyr-eabi",
+    // The paths have to match the versions in the selected Zephyr SDK, see .devcontainer/devcontainer.json
+    "cortex-debug.armToolchainPath": "/opt/toolchains/zephyr-sdk-0.17.2/arm-zephyr-eabi/bin/",
+    "cortex-debug.gdbPath": "/opt/toolchains/zephyr-sdk-0.17.2/arm-zephyr-eabi/bin/arm-zephyr-eabi-gdb",
+    "editor.formatOnSave": true,
+    "files.associations": {},
+    "cortex-debug.variableUseNaturalFormat": true
+}
