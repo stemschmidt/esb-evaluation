@@ -2,7 +2,7 @@
 {
     "name": "Zephyr environment",
     "image": "docker.io/zephyrprojectrtos/zephyr-build:v0.28.6",
-    "postStartCommand": "/bin/bash",
+    "postStartCommand": "/bin/bash scripts/setup.sh",
     // Configure tool-specific properties.
     "customizations": {
         // Configure properties specific to VS Code.
@@ -17,9 +17,13 @@
             ]
         }
     },
+    "postAttachCommand": [
+        "/bin/bash"
+    ],
     "remoteUser": "user",
     "runArgs": [
-        "--add-host=host.docker.internal:host-gateway",
-        "--rm"
+        "--rm",
+        "--device=/dev/bus/usb/001/002",
+        "--privileged"
     ]
 }

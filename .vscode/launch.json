@@ -7,27 +7,18 @@
     "configurations": [
         {
             "name": "Debug Zephyr application",
-            "cwd": "${workspaceFolder}",
-            "executable": "build/zephyr/zephyr.elf",
-            "interface": "swd",
-            "request": "launch",
             "type": "cortex-debug",
-            "servertype": "external",
-            "gdbTarget": "host.docker.internal:2331",
-            "device": "nrf52840",
-            "svdFile": "modules/hal/nordic/nrfx/mdk/nrf52840.svd",
-            "overrideLaunchCommands": [
-                "monitor reset 0",
-                "-target-download",
-                "monitor reset 0"
-            ],
-            "overrideResetCommands": [
-                "monitor reset 0"
-            ],
+            "request": "launch",
+            "servertype": "jlink",
+            "cwd": "${workspaceFolder}",
+            "executable": "esb_ptx/build/merged.hex",
+            "interface": "swd",
+            "device": "nrf52840_xxAA",
+            //           "svdFile": "modules/hal/nordic/nrfx/mdk/nrf52840.svd",
             "postLaunchCommands": [
-                "file build/zephyr/zephyr.elf"
+                "file esb_ptx/build/esb_ptx/zephyr/zephyr.elf"
             ],
-            "rtos": "zephyr",
+            "rtos": "Zephyr",
             "showDevDebugOutput": "none",
             "runToEntryPoint": "main"
         }
