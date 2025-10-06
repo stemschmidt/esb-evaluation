@@ -1,0 +1,21 @@
+manifest:
+  version: "0.13"
+
+  remotes:
+    - name: nrf
+      url-base: https://github.com/nrfconnect
+
+  projects:
+    - name: nrf
+      remote: nrf
+      repo-path: sdk-nrf
+      revision: v3.1.1
+      import:
+        name-allowlist:
+          - zephyr
+          - nrfxlib
+          - mcuboot
+          - hal_nordic
+          - cmsis_6
+  self:
+    path: manifest

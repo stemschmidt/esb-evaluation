@@ -1,2 +1,2 @@
 # zepyhr_environment
-Environment to build and debug zephyr projects
+Environment to evaluate Enhanced Shockburst
