@@ -1,4 +1,6 @@
 /bootloader/
+/esb_prx/build/
+/esb_ptx/build/
 /modules/
 /nrf/
 /nrfxlib/
