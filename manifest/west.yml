@@ -12,10 +12,12 @@ manifest:
       revision: v3.1.1
       import:
         name-allowlist:
-          - zephyr
-          - nrfxlib
-          - mcuboot
-          - hal_nordic
           - cmsis_6
+          - hal_nordic
+          - mbedtls
+          - mcuboot
+          - nrfxlib
+          - oberon-psa-crypto
+          - zephyr
   self:
     path: manifest
