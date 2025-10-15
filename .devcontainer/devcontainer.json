@@ -23,7 +23,5 @@
     "remoteUser": "user",
     "runArgs": [
         "--rm",
-        "--device=/dev/bus/usb/001/002",
-        "--privileged"
     ]
 }

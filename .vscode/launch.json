@@ -6,17 +6,52 @@
     "showDevDebugOutput": true,
     "configurations": [
         {
-            "name": "Debug Zephyr application",
+            "name": "Debug prx",
             "type": "cortex-debug",
             "request": "launch",
-            "servertype": "jlink",
+            "servertype": "external",
+            "gdbTarget": "host.docker.internal:2331",
+            "svdFile": "modules/hal/nordic/nrfx/mdk/nrf54l15_application.svd",
+            "cwd": "${workspaceFolder}",
+            "executable": "esb_prx/build/merged.hex",
+            "interface": "swd",
+            "device": "nRF54L15_M33",
+            "overrideLaunchCommands": [
+                "monitor reset 0",
+                "-target-download",
+                "monitor reset 0"
+            ],
+            "postLaunchCommands": [
+                "file esb_prx/build/esb_prx/zephyr/zephyr.elf"
+            ],
+            "overrideResetCommands": [
+                "monitor reset 0"
+            ],
+            "rtos": "Zephyr",
+            "showDevDebugOutput": "none",
+            "runToEntryPoint": "main"
+        },
+        {
+            "name": "Debug ptx",
+            "type": "cortex-debug",
+            "request": "launch",
+            "servertype": "external",
+            "gdbTarget": "host.docker.internal:2331",
+            "svdFile": "modules/hal/nordic/nrfx/mdk/nrf54l15_application.svd",
             "cwd": "${workspaceFolder}",
             "executable": "esb_ptx/build/merged.hex",
             "interface": "swd",
-            "device": "nrf52840_xxAA",
-            //           "svdFile": "modules/hal/nordic/nrfx/mdk/nrf52840.svd",
+            "device": "nRF54L15_M33",
+            "overrideLaunchCommands": [
+                "monitor reset 0",
+                "-target-download",
+                "monitor reset 0"
+            ],
             "postLaunchCommands": [
                 "file esb_ptx/build/esb_ptx/zephyr/zephyr.elf"
+            ],
+            "overrideResetCommands": [
+                "monitor reset 0"
             ],
             "rtos": "Zephyr",
             "showDevDebugOutput": "none",
