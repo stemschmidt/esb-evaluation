@@ -28,7 +28,7 @@
 
 LOG_MODULE_REGISTER(esb_ptx, CONFIG_ESB_PTX_APP_LOG_LEVEL);
 
-#define NUM_SAMPLES 96U
+#define NUM_SAMPLES 126U
 
 static bool ready = true;
 static struct esb_payload tx_payload = {0};
@@ -36,6 +36,7 @@ static void sample_handler(struct k_timer* timer);
 K_TIMER_DEFINE(sample_timer, sample_handler, NULL);
 
 static uint16_t audio_samples[NUM_SAMPLES] = {0};
+static int packets_send = 0;
 
 #define _RADIO_SHORTS_COMMON                                     \
   (RADIO_SHORTS_READY_START_Msk | RADIO_SHORTS_END_DISABLE_Msk | \
@@ -202,6 +203,8 @@ static void sample_handler(struct k_timer* timer) {
     int err = esb_write_payload(&tx_payload);
     if (err) {
       LOG_ERR("Payload write failed, err %d", err);
+    } else {
+      packets_send++;
     }
 
     for (int i = 0; i < NUM_SAMPLES; i++) {

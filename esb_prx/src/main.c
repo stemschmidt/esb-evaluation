@@ -28,7 +28,7 @@
 
 LOG_MODULE_REGISTER(esb_prx, CONFIG_ESB_PRX_APP_LOG_LEVEL);
 
-#define NUM_SAMPLES 96U
+#define NUM_SAMPLES 126U
 
 static struct esb_payload rx_payload = {0};
 static uint16_t audio_samples[NUM_SAMPLES] = {0};
