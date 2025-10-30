@@ -28,7 +28,7 @@
 
 LOG_MODULE_REGISTER(esb_ptx, CONFIG_ESB_PTX_APP_LOG_LEVEL);
 
-#define NUM_SAMPLES 64U
+#define NUM_SAMPLES 96U
 
 static bool ready = true;
 static struct esb_payload tx_payload = {0};
