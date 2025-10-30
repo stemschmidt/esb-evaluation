@@ -28,9 +28,12 @@
 
 LOG_MODULE_REGISTER(esb_ptx, CONFIG_ESB_PTX_APP_LOG_LEVEL);
 
+#define NUM_SAMPLES 32U
+
 static bool ready = true;
-static struct esb_payload rx_payload;
 static struct esb_payload tx_payload = {0};
+
+static uint16_t audio_samples[NUM_SAMPLES] = {0};
 
 #define _RADIO_SHORTS_COMMON                                     \
   (RADIO_SHORTS_READY_START_Msk | RADIO_SHORTS_END_DISABLE_Msk | \
@@ -47,15 +50,7 @@ void event_handler(struct esb_evt const* event) {
       LOG_DBG("TX FAILED EVENT");
       break;
     case ESB_EVENT_RX_RECEIVED:
-      while (esb_read_rx_payload(&rx_payload) == 0) {
-        LOG_DBG(
-            "Packet received, len %d : "
-            "0x%02x, 0x%02x, 0x%02x, 0x%02x, "
-            "0x%02x, 0x%02x, 0x%02x, 0x%02x",
-            rx_payload.length, rx_payload.data[0], rx_payload.data[1],
-            rx_payload.data[2], rx_payload.data[3], rx_payload.data[4],
-            rx_payload.data[5], rx_payload.data[6], rx_payload.data[7]);
-      }
+      LOG_DBG("Packet received");
       break;
   }
 }
@@ -152,7 +147,8 @@ int esb_initialize(void) {
   struct esb_config config = ESB_DEFAULT_CONFIG;
 
   config.protocol = ESB_PROTOCOL_ESB_DPL;
-  config.retransmit_delay = 600;
+  config.retransmit_delay = 0;
+  config.retransmit_count = 0;
   config.bitrate = ESB_BITRATE_2MBPS;
   config.event_handler = event_handler;
   config.mode = ESB_MODE_PTX;
@@ -217,12 +213,9 @@ int main(void) {
   }
 
   tx_payload.pipe = 0;
-  tx_payload.length = 8;
+  tx_payload.length = sizeof(audio_samples);
   tx_payload.noack = true;
-  const uint8_t initial_data[] = {0x01, 0x00, 0x03, 0x04,
-                                  0x05, 0x06, 0x07, 0x08};
 
-  memcpy(tx_payload.data, initial_data, sizeof(initial_data));
   LOG_INF("Initialization complete");
   LOG_INF("Sending test packet");
 
@@ -232,12 +225,19 @@ int main(void) {
       esb_flush_tx();
       leds_update(tx_payload.data[1]);
 
+      memcpy(tx_payload.data, audio_samples, sizeof(audio_samples));
       err = esb_write_payload(&tx_payload);
       if (err) {
         LOG_ERR("Payload write failed, err %d", err);
       }
-      tx_payload.data[1]++;
+
+      for (int i = 0; i < NUM_SAMPLES; i++) {
+        audio_samples[i] += 1;
+      }
+
+    } else {
+      LOG_ERR("NOT READY!");
     }
-    k_sleep(K_MSEC(100));
+    k_sleep(K_MSEC(1));
   }
 }
