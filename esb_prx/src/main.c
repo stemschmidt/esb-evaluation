@@ -28,7 +28,7 @@
 
 LOG_MODULE_REGISTER(esb_prx, CONFIG_ESB_PRX_APP_LOG_LEVEL);
 
-#define NUM_SAMPLES 32U
+#define NUM_SAMPLES 64U
 
 static struct esb_payload rx_payload = {0};
 static uint16_t audio_samples[NUM_SAMPLES] = {0};
@@ -52,7 +52,7 @@ void event_handler(struct esb_evt const* event) {
       break;
     case ESB_EVENT_RX_RECEIVED:
       if (esb_read_rx_payload(&rx_payload) == 0) {
-        memcpy(audio_samples, rx_payload.data, sizeof(audio_samples));
+        memcpy(audio_samples, rx_payload.data, rx_payload.length);
         leds_update(rx_payload.data[1]);
       } else {
         LOG_ERR("Error while reading rx packet");
@@ -154,7 +154,7 @@ int esb_initialize(void) {
   struct esb_config config = ESB_DEFAULT_CONFIG;
 
   config.protocol = ESB_PROTOCOL_ESB_DPL;
-  config.bitrate = ESB_BITRATE_2MBPS;
+  config.bitrate = ESB_BITRATE_4MBPS;
   config.mode = ESB_MODE_PRX;
   config.event_handler = event_handler;
   config.selective_auto_ack = true;

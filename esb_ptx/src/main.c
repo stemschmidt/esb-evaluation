@@ -28,10 +28,12 @@
 
 LOG_MODULE_REGISTER(esb_ptx, CONFIG_ESB_PTX_APP_LOG_LEVEL);
 
-#define NUM_SAMPLES 32U
+#define NUM_SAMPLES 64U
 
 static bool ready = true;
 static struct esb_payload tx_payload = {0};
+static void sample_handler(struct k_timer* timer);
+K_TIMER_DEFINE(sample_timer, sample_handler, NULL);
 
 static uint16_t audio_samples[NUM_SAMPLES] = {0};
 
@@ -149,7 +151,7 @@ int esb_initialize(void) {
   config.protocol = ESB_PROTOCOL_ESB_DPL;
   config.retransmit_delay = 0;
   config.retransmit_count = 0;
-  config.bitrate = ESB_BITRATE_2MBPS;
+  config.bitrate = ESB_BITRATE_4MBPS;
   config.event_handler = event_handler;
   config.mode = ESB_MODE_PTX;
   config.selective_auto_ack = true;
@@ -190,6 +192,26 @@ static void leds_update(uint8_t value) {
   dk_set_leds(leds_mask);
 }
 
+static void sample_handler(struct k_timer* timer) {
+  if (ready) {
+    ready = false;
+    esb_flush_tx();
+    leds_update(tx_payload.data[1]);
+
+    memcpy(tx_payload.data, audio_samples, sizeof(audio_samples));
+    int err = esb_write_payload(&tx_payload);
+    if (err) {
+      LOG_ERR("Payload write failed, err %d", err);
+    }
+
+    for (int i = 0; i < NUM_SAMPLES; i++) {
+      audio_samples[i] += 1;
+    }
+  } else {
+    LOG_ERR("NOT READY!");
+  }
+}
+
 int main(void) {
   int err;
 
@@ -219,25 +241,9 @@ int main(void) {
   LOG_INF("Initialization complete");
   LOG_INF("Sending test packet");
 
+  k_timer_start(&sample_timer, K_USEC(2000), K_USEC(2000));
+
   while (1) {
-    if (ready) {
-      ready = false;
-      esb_flush_tx();
-      leds_update(tx_payload.data[1]);
-
-      memcpy(tx_payload.data, audio_samples, sizeof(audio_samples));
-      err = esb_write_payload(&tx_payload);
-      if (err) {
-        LOG_ERR("Payload write failed, err %d", err);
-      }
-
-      for (int i = 0; i < NUM_SAMPLES; i++) {
-        audio_samples[i] += 1;
-      }
-
-    } else {
-      LOG_ERR("NOT READY!");
-    }
-    k_sleep(K_MSEC(1));
+    k_sleep(K_SECONDS(10));
   }
 }
