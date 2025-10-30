@@ -244,7 +244,7 @@ int main(void) {
   LOG_INF("Initialization complete");
   LOG_INF("Sending test packet");
 
-  k_timer_start(&sample_timer, K_USEC(2000), K_USEC(2000));
+  k_timer_start(&sample_timer, K_USEC(1850), K_USEC(1850));
 
   while (1) {
     k_sleep(K_SECONDS(10));
