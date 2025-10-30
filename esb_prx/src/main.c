@@ -28,9 +28,10 @@
 
 LOG_MODULE_REGISTER(esb_prx, CONFIG_ESB_PRX_APP_LOG_LEVEL);
 
-static struct esb_payload rx_payload;
-static struct esb_payload tx_payload =
-    ESB_CREATE_PAYLOAD(0, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17);
+#define NUM_SAMPLES 32U
+
+static struct esb_payload rx_payload = {0};
+static uint16_t audio_samples[NUM_SAMPLES] = {0};
 
 static void leds_update(uint8_t value) {
   uint32_t leds_mask = (!(value % 8 > 0 && value % 8 <= 4) ? DK_LED1_MSK : 0) |
@@ -51,14 +52,7 @@ void event_handler(struct esb_evt const* event) {
       break;
     case ESB_EVENT_RX_RECEIVED:
       if (esb_read_rx_payload(&rx_payload) == 0) {
-        LOG_DBG(
-            "Packet received, len %d : "
-            "0x%02x, 0x%02x, 0x%02x, 0x%02x, "
-            "0x%02x, 0x%02x, 0x%02x, 0x%02x",
-            rx_payload.length, rx_payload.data[0], rx_payload.data[1],
-            rx_payload.data[2], rx_payload.data[3], rx_payload.data[4],
-            rx_payload.data[5], rx_payload.data[6], rx_payload.data[7]);
-
+        memcpy(audio_samples, rx_payload.data, sizeof(audio_samples));
         leds_update(rx_payload.data[1]);
       } else {
         LOG_ERR("Error while reading rx packet");
@@ -214,12 +208,6 @@ int main(void) {
   }
 
   LOG_INF("Initialization complete");
-
-  err = esb_write_payload(&tx_payload);
-  if (err) {
-    LOG_ERR("Write payload, err %d", err);
-    return 0;
-  }
 
   LOG_INF("Setting up for packet receiption");
 
