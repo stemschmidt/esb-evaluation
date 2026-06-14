@@ -7,7 +7,17 @@
     "customizations": {
         // Configure properties specific to VS Code.
         "vscode": {
-            "settings": {},
+            "settings": {
+                "terminal.integrated.defaultProfile.linux": "bash",
+                "terminal.integrated.profiles.linux": {
+                    "bash": {
+                        "path": "/bin/bash",
+                        "args": [
+                            "-l"
+                        ]
+                    }
+                }
+            },
             "extensions": [
                 "ms-vscode.cpptools-extension-pack",
                 "mcu-debug.debug-tracker-vscode",
@@ -22,6 +32,7 @@
     ],
     "remoteUser": "user",
     "runArgs": [
+        "--network=host",
         "--rm",
-    ]
+    ],
 }
