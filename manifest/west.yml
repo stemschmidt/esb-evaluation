@@ -14,10 +14,12 @@ manifest:
         name-allowlist:
           - cmsis_6
           - hal_nordic
+          - libmetal
           - mbedtls
           - mcuboot
           - nrfxlib
           - oberon-psa-crypto
+          - open-amp
           - zephyr
   self:
     path: manifest

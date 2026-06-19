@@ -1,6 +1,7 @@
 /bootloader/
 /esb_prx/build/
 /esb_ptx/build/
+/esb_5340_usb_source/build/
 /modules/
 /nrf/
 /nrfxlib/

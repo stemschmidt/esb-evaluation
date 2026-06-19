@@ -56,6 +56,31 @@
             "rtos": "Zephyr",
             "showDevDebugOutput": "none",
             "runToEntryPoint": "main"
-        }
-    ]
+        },
+        {
+            "name": "Debug 5340",
+            "type": "cortex-debug",
+            "request": "launch",
+            "servertype": "external",
+            "gdbTarget": "localhost:2331",
+            "svdFile": "modules/hal/nordic/nrfx/mdk/nrf5340_application.svd",
+            "cwd": "${workspaceFolder}",
+            "executable": "esb_5340_usb_source/build/merged.hex",
+            "interface": "swd",
+            "device": "nRF5340_M33",
+            "overrideLaunchCommands": [
+                "monitor reset 0",
+                "-target-download",
+                "monitor reset 0"
+            ],
+            "postLaunchCommands": [
+                "file esb_5340_usb_source/build/esb_5340_usb_source/zephyr/zephyr.elf"
+            ],
+            "overrideResetCommands": [
+                "monitor reset 0"
+            ],
+            "rtos": "Zephyr",
+            "showDevDebugOutput": "none",
+            "runToEntryPoint": "main"
+        }    ]
 }
