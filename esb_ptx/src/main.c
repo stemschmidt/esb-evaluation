@@ -140,20 +140,23 @@ static int esb_initialize(void) {
     uint8_t base_addr_0[4] = {0xE7, 0xE7, 0xE7, 0xE7};
     uint8_t base_addr_1[4] = {0xC2, 0xC2, 0xC2, 0xC2};
     uint8_t addr_prefix[8] = {0xE7, 0xC2, 0xC3, 0xC4, 0xC5, 0xC6, 0xC7, 0xC8};
+
     struct esb_config esb_config = ESB_DEFAULT_CONFIG;
 
-    /* PTX Modus: nur senden */
+    /* PTX Mode, only send. */
     esb_config.protocol = ESB_PROTOCOL_ESB_DPL;
     esb_config.mode = ESB_MODE_PTX;
     esb_config.bitrate = ESB_BITRATE_4MBPS;
-    esb_config.crc = ESB_CRC_16BIT;
+    esb_config.crc = ESB_CRC_OFF;
+    esb_config.use_fast_ramp_up = true;
+    esb_config.payload_length = sizeof(audio_message_t);
 
-    /* Kein ACK, keine Retransmits → maximaler Durchsatz */
+    /* No Ack, no retransmit. */
     esb_config.retransmit_count = 0;
     esb_config.retransmit_delay = 0;
-    esb_config.selective_auto_ack = true; /* ACK per Paket steuerbar */
+    esb_config.selective_auto_ack = true;
 
-    /* TX FIFO sofort leeren */
+    /* TX mode. */
     esb_config.tx_mode = ESB_TXMODE_AUTO;
 
     esb_config.event_handler = event_handler;
