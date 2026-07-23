@@ -29,6 +29,10 @@
 
 LOG_MODULE_REGISTER(esb_ptx, CONFIG_ESB_PTX_APP_LOG_LEVEL);
 
+#define PACKET_HANDOVER 0U
+#define PACKET_SENT 1U
+#define PACKET_HANDOVER_ERROR 2U
+
 #define ESB_RF_CHANNEL 10U
 
 #define NUM_SAMPLES 16U
@@ -45,8 +49,9 @@ typedef struct {
 static struct esb_payload tx_payload = {0};
 static void sample_handler(struct k_timer* timer);
 K_TIMER_DEFINE(sample_timer, sample_handler, NULL);
-static K_SEM_DEFINE(tx_sem, CONFIG_ESB_TX_FIFO_SIZE, CONFIG_ESB_TX_FIFO_SIZE);
-static int packets_send = 0;
+static K_SEM_DEFINE(tx_sem, 1, CONFIG_ESB_TX_FIFO_SIZE);
+static int packets_handed_over = 0;
+static int packets_sent = 0;
 
 void event_handler(struct esb_evt const* event);
 
@@ -193,8 +198,12 @@ static int esb_initialize(void) {
 void event_handler(struct esb_evt const* event) {
     switch (event->evt_id) {
         case ESB_EVENT_TX_SUCCESS:
-            packets_send++;
-            dk_set_led(0, 0);
+            if (packets_sent % 2) {
+                dk_set_led(PACKET_SENT, 0);
+            } else {
+                dk_set_led(PACKET_SENT, 1);
+            }
+            packets_sent++;
             break;
         case ESB_EVENT_TX_FAILED:
             LOG_DBG("TX FAILED EVENT");
@@ -224,8 +233,9 @@ int main(void) {
         LOG_ERR("LEDs initialization failed, rc %d", rc);
         return 0;
     }
-    dk_set_led(0, 0);
-    dk_set_led(1, 0);
+    dk_set_led(PACKET_HANDOVER, 0);
+    dk_set_led(PACKET_SENT, 0);
+    dk_set_led(PACKET_HANDOVER_ERROR, 0);
 
     rc = esb_initialize();
     if (rc) {
@@ -257,9 +267,14 @@ int main(void) {
         memcpy(tx_payload.data, &message, sizeof(audio_message_t));
         int rc = esb_write_payload(&tx_payload);
         if (rc) {
-            dk_set_led(1, 1);
+            dk_set_led(PACKET_HANDOVER_ERROR, 1);
         } else {
-            dk_set_led(0, 1);
+            if (packets_handed_over % 2) {
+                dk_set_led(PACKET_HANDOVER, 0);
+            } else {
+                dk_set_led(PACKET_HANDOVER, 1);
+            }
         }
+        packets_handed_over++;
     }
 }
