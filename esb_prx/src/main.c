@@ -11,6 +11,7 @@
 #include <zephyr/drivers/clock_control.h>
 #include <zephyr/drivers/clock_control/nrf_clock_control.h>
 #include <zephyr/drivers/gpio.h>
+#include <zephyr/drivers/i2s.h>
 #include <zephyr/irq.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
@@ -29,6 +30,9 @@
 LOG_MODULE_REGISTER(esb_prx, CONFIG_ESB_PRX_APP_LOG_LEVEL);
 
 #define PACKET_RECEIVED 0U
+#define AUDIO_QUEUE_OK 1U
+#define I2S_WRITE_OK 2U
+#define I2S_ACTIVE 3U
 
 #define ESB_RF_CHANNEL 10U
 
@@ -45,6 +49,20 @@ typedef struct {
 } audio_message_t;
 
 static uint16_t last_sequence_number = 0;
+#define SAMPLE_BIT_WIDTH 16U
+#define NUMBER_OF_CHANNELS 2U
+#define BLOCK_DURATION_MS 100U
+
+#define SAMPLES_PER_BLOCK (NUMBER_OF_CHANNELS * NUM_SAMPLES)
+#define BYTES_PER_SAMPLE (SAMPLE_BIT_WIDTH / 8U)
+#define BLOCK_SIZE (SAMPLES_PER_BLOCK * BYTES_PER_SAMPLE)
+#define BLOCK_COUNT 4U
+
+/* mem slab */
+K_MEM_SLAB_DEFINE(mem_slab, BLOCK_SIZE, BLOCK_COUNT, 4);
+K_MSGQ_DEFINE(audio_msgq, sizeof(void*), 8, 4);
+
+const struct device* i2s_dev = DEVICE_DT_GET(DT_ALIAS(i2s_codec_tx));
 
 void event_handler(struct esb_evt const* event) {
     switch (event->evt_id) {
@@ -58,9 +76,19 @@ void event_handler(struct esb_evt const* event) {
             if (esb_read_rx_payload(&rx_payload) == 0) {
                 audio_message_t* msg = (audio_message_t*)&rx_payload.data;
                 if ((last_sequence_number + 1) == msg->sequence_number) {
-                    dk_set_led(PACKET_RECEIVED, 0);
-                } else {
+                    void* mem_block;
+                    if (k_mem_slab_alloc(&mem_slab, &mem_block, K_NO_WAIT) == 0) {
+                        memcpy(mem_block, msg->samples, BLOCK_SIZE);
+                        int rc = k_msgq_put(&audio_msgq, mem_block, K_NO_WAIT);
+                        if (rc == 0) {
+                            dk_set_led(AUDIO_QUEUE_OK, 1);
+                        } else {
+                            dk_set_led(AUDIO_QUEUE_OK, 0);
+                        }
+                    }
                     dk_set_led(PACKET_RECEIVED, 1);
+                } else {
+                    dk_set_led(PACKET_RECEIVED, 0);
                 }
                 last_sequence_number = msg->sequence_number;
             } else {
@@ -72,7 +100,7 @@ void event_handler(struct esb_evt const* event) {
 
 #if defined(CONFIG_CLOCK_CONTROL_NRF)
 int clocks_start(void) {
-    int err;
+    int rc;
     int res;
     struct onoff_manager* clk_mgr;
     struct onoff_client clk_cli;
@@ -85,19 +113,19 @@ int clocks_start(void) {
 
     sys_notify_init_spinwait(&clk_cli.notify);
 
-    err = onoff_request(clk_mgr, &clk_cli);
-    if (err < 0) {
-        LOG_ERR("Clock request failed: %d", err);
-        return err;
+    rc = onoff_request(clk_mgr, &clk_cli);
+    if (rc < 0) {
+        LOG_ERR("Clock request failed: %d", rc);
+        return rc;
     }
 
     do {
-        err = sys_notify_fetch_result(&clk_cli.notify, &res);
-        if (!err && res) {
+        rc = sys_notify_fetch_result(&clk_cli.notify, &res);
+        if (!rc && res) {
             LOG_ERR("Clock could not be started: %d", res);
             return res;
         }
-    } while (err);
+    } while (rc);
 
 #if NRF54L_ERRATA_20_PRESENT
     if (nrf54l_errata_20()) {
@@ -117,7 +145,7 @@ int clocks_start(void) {
 #elif defined(CONFIG_CLOCK_CONTROL_NRF2)
 
 int clocks_start(void) {
-    int err;
+    int rc;
     int res;
     const struct device* radio_clk_dev = DEVICE_DT_GET_OR_NULL(DT_CLOCKS_CTLR(DT_NODELABEL(radio)));
     struct onoff_client radio_cli;
@@ -127,15 +155,15 @@ int clocks_start(void) {
 
     sys_notify_init_spinwait(&radio_cli.notify);
 
-    err = nrf_clock_control_request(radio_clk_dev, NULL, &radio_cli);
+    rc = nrf_clock_control_request(radio_clk_dev, NULL, &radio_cli);
 
     do {
-        err = sys_notify_fetch_result(&radio_cli.notify, &res);
-        if (!err && res) {
+        rc = sys_notify_fetch_result(&radio_cli.notify, &res);
+        if (!rc && res) {
             LOG_ERR("Clock could not be started: %d", res);
             return res;
         }
-    } while (err == -EAGAIN);
+    } while (rc == -EAGAIN);
 
     nrf_lrcconf_clock_always_run_force_set(NRF_LRCCONF000, 0, true);
     nrf_lrcconf_task_trigger(NRF_LRCCONF000, NRF_LRCCONF_TASK_CLKSTART_0);
@@ -150,7 +178,7 @@ BUILD_ASSERT(false, "No Clock Control driver");
 #endif /* defined(CONFIG_CLOCK_CONTROL_NRF2) */
 
 int esb_initialize(void) {
-    int err;
+    int rc;
     /* These are arbitrary default addresses. In end user products
      * different addresses should be used for each set of devices.
      */
@@ -173,53 +201,82 @@ int esb_initialize(void) {
 
     config.event_handler = event_handler;
 
-    err = esb_init(&config);
-    if (err) {
-        return err;
+    rc = esb_init(&config);
+    if (rc) {
+        return rc;
     }
 
-    err = esb_set_base_address_0(base_addr_0);
-    if (err) {
-        return err;
+    rc = esb_set_base_address_0(base_addr_0);
+    if (rc) {
+        return rc;
     }
 
-    err = esb_set_base_address_1(base_addr_1);
-    if (err) {
-        return err;
+    rc = esb_set_base_address_1(base_addr_1);
+    if (rc) {
+        return rc;
     }
 
-    err = esb_set_prefixes(addr_prefix, ARRAY_SIZE(addr_prefix));
-    if (err) {
-        return err;
+    rc = esb_set_prefixes(addr_prefix, ARRAY_SIZE(addr_prefix));
+    if (rc) {
+        return rc;
     }
 
-    err = esb_set_rf_channel(ESB_RF_CHANNEL);
-    if (err) {
-        return err;
+    rc = esb_set_rf_channel(ESB_RF_CHANNEL);
+    if (rc) {
+        return rc;
     }
 
     return 0;
 }
 
 int main(void) {
-    int err;
-
+    int rc;
+    int blocks_received = 0;
     LOG_INF("Enhanced ShockBurst prx sample");
 
-    err = clocks_start();
-    if (err) {
+    if (!device_is_ready(i2s_dev)) {
+        printk("I2S device not ready\n");
+        return -1;
+    }
+
+    struct i2s_config cfg = {0};
+    cfg.word_size = SAMPLE_BIT_WIDTH;
+    cfg.channels = NUMBER_OF_CHANNELS;
+    cfg.format = I2S_FMT_DATA_FORMAT_I2S;
+#ifdef CONFIG_USE_CODEC_CLOCK
+    cfg.options = I2S_OPT_FRAME_CLK_MASTER | I2S_OPT_BIT_CLK_MASTER;
+#else
+    cfg.options = I2S_OPT_FRAME_CLK_SLAVE | I2S_OPT_BIT_CLK_SLAVE;
+#endif
+    cfg.frame_clk_freq = CONFIG_SAMPLE_FREQ;
+    cfg.mem_slab = &mem_slab;
+    cfg.block_size = BLOCK_SIZE;
+    cfg.timeout = 2000U;
+
+    if (i2s_configure(i2s_dev, I2S_DIR_TX, &cfg) < 0) {
+        printk("I2S configure failed\n");
+        return -1;
+    }
+
+    rc = clocks_start();
+    if (rc) {
         return 0;
     }
 
-    err = dk_leds_init();
-    if (err) {
-        LOG_ERR("LEDs initialization failed, err %d", err);
+    rc = dk_leds_init();
+    if (rc) {
+        LOG_ERR("LEDs initialization failed, rc %d", rc);
         return 0;
     }
 
-    err = esb_initialize();
-    if (err) {
-        LOG_ERR("ESB initialization failed, err %d", err);
+    dk_set_led(PACKET_RECEIVED, 0);
+    dk_set_led(AUDIO_QUEUE_OK, 0);
+    dk_set_led(I2S_WRITE_OK, 0);
+    dk_set_led(I2S_ACTIVE, 0);
+
+    rc = esb_initialize();
+    if (rc) {
+        LOG_ERR("ESB initialization failed, rc %d", rc);
         return 0;
     }
 
@@ -227,12 +284,29 @@ int main(void) {
 
     LOG_INF("Setting up for packet receiption");
 
-    err = esb_start_rx();
-    if (err) {
-        LOG_ERR("RX setup failed, err %d", err);
+    rc = esb_start_rx();
+    if (rc) {
+        LOG_ERR("RX setup failed, rc %d", rc);
         return 0;
     }
 
-    /* return to idle thread */
+    while (true) {
+        void* audio_buffer;
+        rc = k_msgq_get(&audio_msgq, &audio_buffer, K_FOREVER);
+        if (rc == 0) {
+            if (i2s_write(i2s_dev, audio_buffer, BLOCK_SIZE) < 0) {
+                dk_set_led(I2S_WRITE_OK, 1);
+            }
+            k_mem_slab_free(&mem_slab, audio_buffer);
+            if (++blocks_received == BLOCK_COUNT) {
+                if (i2s_trigger(i2s_dev, I2S_DIR_TX, I2S_TRIGGER_START) == 0) {
+                    dk_set_led(I2S_ACTIVE, 1);
+                } else {
+                    dk_set_led(I2S_ACTIVE, 0);
+                }
+            }
+        }
+    }
+
     return 0;
 }
